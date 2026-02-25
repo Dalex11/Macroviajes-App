@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, Alert, Linking, Dimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, Linking, Dimensions } from 'react-native';
 import { MessageCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,21 +50,25 @@ export default function WhatsAppButton() {
   };
 
   return (
-    <TouchableOpacity 
-      style={[
-        styles.whatsappButton,
-        {
-          bottom: bottomOffset + insets.bottom,
-          width: WHATSAPP_SIZE,
-          height: WHATSAPP_SIZE,
-          borderRadius: WHATSAPP_SIZE / 2,
-        }
-      ]}
-      onPress={handleWhatsAppPress}
-      activeOpacity={0.8}
-    >
-      <MessageCircle size={getResponsiveSize(24)} color={COLORS.white} fill={COLORS.white} />
-    </TouchableOpacity>
+    <View style={styles.wrapper} pointerEvents="box-none">
+      <TouchableOpacity 
+        style={[
+          styles.whatsappButton,
+          {
+            bottom: bottomOffset + insets.bottom,
+            width: WHATSAPP_SIZE,
+            height: WHATSAPP_SIZE,
+            borderRadius: WHATSAPP_SIZE / 2,
+          }
+        ]}
+        onPress={handleWhatsAppPress}
+        activeOpacity={0.8}
+        hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
+        pointerEvents="auto"
+      >
+        <MessageCircle size={getResponsiveSize(24)} color={COLORS.white} fill={COLORS.white} />
+      </TouchableOpacity>
+    </View>
   );
 }
 

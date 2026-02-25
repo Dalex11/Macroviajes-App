@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { User } from '@/types/user';
+import { db } from '@/config/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const STORAGE_KEY = '@macroviajes_user';
 
@@ -27,51 +29,42 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    console.log('Attempting login:', username);
-    
-    if (username === 'admin' && password === 'admin') {
-      const adminUser: User = {
-        id: 'admin-1',
-        username: 'admin',
-        tipo: 'admin',
-        nombre: 'Administrador',
-        apellido: 'Sistema',
-      };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(adminUser));
-      setUser(adminUser);
-      return true;
-    }
-    
-    if (username === 'cliente' && password === 'cliente') {
-      const clientUser: User = {
-        id: 'cliente-1',
-        username: 'cliente',
-        tipo: 'cliente',
-        nombre: 'Cliente',
-        apellido: 'Demo',
-        cedula: '123456789',
-        fecha_viaje: '2026-03-15',
-      };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(clientUser));
-      setUser(clientUser);
-      return true;
-    }
-    
-    if (username === 'vendedor' && password === 'vendedor') {
-      const vendedorUser: User = {
-        id: 'vendedor-1',
-        username: 'vendedor',
-        tipo: 'vendedor',
-        nombre: 'Vendedor',
-        apellido: 'Demo',
-        cedula: '987654321',
-      };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(vendedorUser));
-      setUser(vendedorUser);
-      return true;
-    }
+    console.log('Attempting login (username):', username);
+    console.log('Attempting login (password):', password);
+    try {
+      const q = query(
+        collection(db, 'usuarios'),
+        where('username', '==', username),
+        where('password', '==', password)
+      );
+      const querySnapshot = await getDocs(q);
+      console.log('querySnapshot:', querySnapshot);
 
-    return false;
+      if (!querySnapshot.empty) {
+        const docSnap = querySnapshot.docs[0];
+        const data = docSnap.data() as any;
+
+        const foundUser: User = {
+          id: docSnap.id,
+          username: data.username ?? '',
+          tipo: data.tipo ?? 'cliente',
+          nombre: data.nombre ?? '',
+          apellido: data.apellido ?? '',
+          cedula: data.cedula ?? undefined,
+          fecha_viaje: data.fecha_viaje ?? undefined,
+          ...(data.password ? { password: data.password } : {}),
+        } as User;
+
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(foundUser));
+        setUser(foundUser);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error logging in (Firestore):', error);
+      return false;
+    }
   };
 
   const logout = async () => {

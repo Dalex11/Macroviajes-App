@@ -3,12 +3,12 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyA8RGKyZAguOOV_sWT0eCgB9r9imT0Feig",
+  authDomain: "macroviajes-app-de304.firebaseapp.com",
+  projectId: "macroviajes-app-de304",
+  storageBucket: "macroviajes-app-de304.firebasestorage.app",
+  messagingSenderId: "355730791651",
+  appId: "1:355730791651:web:f0bf6f6f6277a5fca979d6"
 };
 
 const app = initializeApp(firebaseConfig);
