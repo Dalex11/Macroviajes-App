@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,10 @@ import {
 } from 'react-native';
 import { Share2, Download, Plus, Trash2 } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
+import { db, storage } from '@/config/firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { COLORS, SPACING } from '@/constants/theme';
 import { File as ExpoFile, Paths } from 'expo-file-system';
@@ -32,29 +36,46 @@ const ICON_SIZE = getResponsiveSize(50);
 interface Promocion {
   id: string;
   url: string;
+  storagePath: string;
+  createdAt: any; // Timestamp from Firebase
 }
 
-const MOCK_PROMOCIONES: Promocion[] = [
-  {
-    id: '1',
-    url: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80',
-  },
-  {
-    id: '2',
-    url: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80',
-  },
-  {
-    id: '3',
-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
-  },
-];
+// MOCK_PROMOCIONES removed - now loading from Firestore
 
 export default function PromocionesScreen() {
   const { isAdmin } = useAuth();
   const insets = useSafeAreaInsets();
-  const [promociones, setPromociones] = useState<Promocion[]>(MOCK_PROMOCIONES);
+  const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [downloading, setDownloading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    loadPromociones();
+  }, []);
+
+  const loadPromociones = async () => {
+    try {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, 'promociones'));
+      const loaded: Promocion[] = [];
+      querySnapshot.forEach((doc) => {
+        loaded.push({
+          id: doc.id,
+          url: doc.data().url,
+          storagePath: doc.data().storagePath,
+          createdAt: doc.data().createdAt,
+        });
+      });
+      setPromociones(loaded);
+      setCurrentIndex(0);
+    } catch (error) {
+      console.error('Error loading promociones:', error);
+      Alert.alert('Error', 'No se pudo cargar las promociones');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleShare = async (url: string) => {
     try {
@@ -170,8 +191,48 @@ export default function PromocionesScreen() {
     }
   };
 
-  const handleAddPromocion = () => {
-    Alert.alert('Agregar Promoción', 'Funcionalidad de Firebase próximamente');
+  const handleAddPromocion = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permiso Denegado', 'Se necesita permiso para acceder a la galería');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+
+      // Cancelled selection
+      // Newer Expo ImagePicker returns assets array; older returns { cancelled, uri }
+      const localUri = (result as any).assets?.[0]?.uri ?? (result as any).uri;
+      if (!localUri) return;
+
+      // Fetch the file as a blob
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+
+      // Upload to Firebase Storage
+      const filename = `promociones/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+      const storageRef = ref(storage, filename);
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // Save a record in Firestore
+      await addDoc(collection(db, 'promociones'), {
+        storagePath: filename,
+        url: downloadURL,
+        createdAt: serverTimestamp(),
+      });
+
+      // Reload promociones list
+      await loadPromociones();
+      Alert.alert('Éxito', 'Promoción subida correctamente');
+    } catch (error) {
+      console.error('Error al subir promoción:', error);
+      Alert.alert('Error', 'No se pudo subir la promoción. Intenta nuevamente.');
+    }
   };
 
   const handleDeletePromocion = (id: string) => {
@@ -183,8 +244,25 @@ export default function PromocionesScreen() {
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            setPromociones(prev => prev.filter(p => p.id !== id));
+          onPress: async () => {
+            try {
+              const promoted = promociones.find(p => p.id === id);
+              if (!promoted) return;
+
+              // Delete from Firebase Storage
+              const storageRef = ref(storage, promoted.storagePath);
+              await deleteObject(storageRef);
+
+              // Delete from Firestore
+              await deleteDoc(doc(db, 'promociones', id));
+
+              // Reload list
+              await loadPromociones();
+              Alert.alert('Éxito', 'Promoción eliminada correctamente');
+            } catch (error) {
+              console.error('Error deleting promocion:', error);
+              Alert.alert('Error', 'No se pudo eliminar la promoción');
+            }
           },
         },
       ]
@@ -205,6 +283,14 @@ export default function PromocionesScreen() {
 
 
   const currentPromocion = promociones[currentIndex];
+
+  if (loading) {
+    return (
+      <View style={styles.emptyContainer}>
+        <ActivityIndicator size="large" color={COLORS.white} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container} pointerEvents="box-none">

@@ -64,7 +64,6 @@ export default function WhatsAppButton() {
         onPress={handleWhatsAppPress}
         activeOpacity={0.8}
         hitSlop={{ top: 8, left: 8, right: 8, bottom: 8 }}
-        pointerEvents="auto"
       >
         <MessageCircle size={getResponsiveSize(24)} color={COLORS.white} fill={COLORS.white} />
       </TouchableOpacity>
@@ -73,6 +72,12 @@ export default function WhatsAppButton() {
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    left: 0,
+  },
   whatsappButton: {
     position: 'absolute',
     right: 16,

@@ -58,6 +58,45 @@ export default function TabLayout() {
     }
   };
 
+  const styles = StyleSheet.create({
+    headerRightContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    headerLeftContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 16,
+    },
+    headerButton: {
+      padding: 8,
+      marginHorizontal: 4,
+    },
+    logoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    logo: {
+      width: getResponsiveSize(32),
+      height: getResponsiveSize(32),
+      marginRight: 8,
+    },
+    appName: {
+      fontSize: getResponsiveSize(18),
+      fontWeight: '700' as const,
+      color: COLORS.white,
+      letterSpacing: 0.5,
+    },
+    iconContainer: {
+      padding: 6,
+      borderRadius: 8,
+    },
+    iconContainerActive: {
+      backgroundColor: 'rgba(236, 111, 53, 0.1)',
+    },
+  });
+
   return (
     <>
     <Tabs
@@ -65,7 +104,6 @@ export default function TabLayout() {
         headerShown: true,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
           borderTopColor: '#E8E8E8',
           paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 10,
@@ -165,42 +203,3 @@ export default function TabLayout() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  headerRightContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  headerLeftContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
-  headerButton: {
-    padding: 8,
-    marginHorizontal: 4,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logo: {
-    width: getResponsiveSize(32),
-    height: getResponsiveSize(32),
-    marginRight: 8,
-  },
-  appName: {
-    fontSize: getResponsiveSize(18),
-    fontWeight: '700' as const,
-    color: COLORS.white,
-    letterSpacing: 0.5,
-  },
-  iconContainer: {
-    padding: 6,
-    borderRadius: 8,
-  },
-  iconContainerActive: {
-    backgroundColor: 'rgba(236, 111, 53, 0.1)',
-  },
-});
