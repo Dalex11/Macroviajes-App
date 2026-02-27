@@ -3,12 +3,12 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA8RGKyZAguOOV_sWT0eCgB9r9imT0Feig",
-  authDomain: "macroviajes-app-de304.firebaseapp.com",
-  projectId: "macroviajes-app-de304",
-  storageBucket: "macroviajes-app-de304.firebasestorage.app",
-  messagingSenderId: "355730791651",
-  appId: "1:355730791651:web:f0bf6f6f6277a5fca979d6"
+  apiKey: process.env.FIREBASE_API_KEY ?? '',
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN ?? '',
+  projectId: process.env.FIREBASE_PROJECT_ID ?? '',
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET ?? '',
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID ?? '',
+  appId: process.env.FIREBASE_APP_ID ?? ''
 };
 
 const app = initializeApp(firebaseConfig);
