@@ -79,7 +79,7 @@ export default function PromocionesScreen() {
 
   const handleShare = async (url: string) => {
     try {
-      const message = 'Encontré esta súper promoción de Macroviajes, para más información escríbenos al https://wa.me/+573016814323';
+      const message = 'Encontré esta súper promoción de Macroviajes. Para más información escríbenos al https://wa.me/+573016814323';
       
       if (Platform.OS === 'web') {
         const response = await fetch(url);

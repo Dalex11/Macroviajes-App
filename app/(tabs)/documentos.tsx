@@ -1,24 +1,27 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  TextInput,
-  Modal,
-  Platform,
-  Dimensions,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { FileText, Download, Plus, Trash2, Edit, X, Upload } from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
+import { db, storage } from '@/config/firebase';
 import { COLORS, SPACING } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
+import { Download, Edit, FileText, Plus, Trash2, Upload, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -34,6 +37,7 @@ interface Documento {
   cedula: string;
   ref_vendedor: string;
   url: string;
+  storagePath?: string;
 }
 
 interface Usuario {
@@ -41,37 +45,6 @@ interface Usuario {
   nombre: string;
   tipo: string;
 }
-
-const MOCK_USUARIOS: Usuario[] = [
-  { cedula: '987654321', nombre: 'María Vendedora', tipo: 'vendedor' },
-  { cedula: '555666777', nombre: 'Carlos Vendedor', tipo: 'vendedor' },
-  { cedula: '111222333', nombre: 'Ana Vendedora', tipo: 'vendedor' },
-];
-
-const MOCK_CLIENTES: Usuario[] = [
-  { cedula: '123456789', nombre: 'Juan Pérez', tipo: 'cliente' },
-  { cedula: '222333444', nombre: 'María García', tipo: 'cliente' },
-  { cedula: '333444555', nombre: 'Pedro López', tipo: 'cliente' },
-];
-
-const MOCK_DOCUMENTOS: Documento[] = [
-  {
-    id: '1',
-    nombre: 'Pasaporte Juan Pérez',
-    tipo_archivo: 'pasaporte',
-    cedula: '123456789',
-    ref_vendedor: '987654321',
-    url: 'https://example.com/doc1.pdf',
-  },
-  {
-    id: '2',
-    nombre: 'Tiquete de Ida - Miami',
-    tipo_archivo: 'tiquete ida',
-    cedula: '123456789',
-    ref_vendedor: '987654321',
-    url: 'https://example.com/doc2.pdf',
-  },
-];
 
 const TIPO_ARCHIVO_OPTIONS = [
   'pasaporte',
@@ -89,7 +62,7 @@ export default function DocumentosScreen() {
   const isAdmin = user?.tipo === 'admin';
   const isVendedor = user?.tipo === 'vendedor';
   
-  const [documentos, setDocumentos] = useState<Documento[]>(MOCK_DOCUMENTOS);
+  const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [showCedulaModal, setShowCedulaModal] = useState<boolean>(false);
   const [cedulaInput, setCedulaInput] = useState<string>('');
   const [selectedDoc, setSelectedDoc] = useState<Documento | null>(null);
@@ -103,9 +76,72 @@ export default function DocumentosScreen() {
   const [showTipoDropdown, setShowTipoDropdown] = useState<boolean>(false);
   const [showVendedorDropdown, setShowVendedorDropdown] = useState<boolean>(false);
   const [showCedulaDropdown, setShowCedulaDropdown] = useState<boolean>(false);
-  const [vendedores] = useState<Usuario[]>(MOCK_USUARIOS);
-  const [clientes] = useState<Usuario[]>(MOCK_CLIENTES);
+  const [vendedores, setVendedores] = useState<Usuario[]>([]);
+  const [clientes, setClientes] = useState<Usuario[]>([]);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+
+  // Load usuarios and documentos from Firestore when user changes
+  useEffect(() => {
+    loadUsuarios();
+    loadDocumentos();
+  }, [user]);
+
+  const loadUsuarios = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'usuarios'));
+      const usuariosData: Usuario[] = [];
+      querySnapshot.forEach((doc) => {
+        usuariosData.push({
+          cedula: doc.data().cedula,
+          nombre: doc.data().nombre,
+          tipo: doc.data().tipo,
+        });
+      });
+
+      // Filter vendedores and clientes
+      const vendedoresList = usuariosData.filter(u => u.tipo === 'vendedor');
+      const clientesList = usuariosData.filter(u => u.tipo === 'cliente');
+
+      setVendedores(vendedoresList);
+      setClientes(clientesList);
+    } catch (error) {
+      console.error('Error loading usuarios:', error);
+      // Keep empty arrays on error
+    }
+  };
+
+  const loadDocumentos = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'documentos'));
+      const all: Documento[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        all.push({
+          id: doc.id,
+          nombre: data.nombre,
+          tipo_archivo: data.tipo_archivo,
+          cedula: data.cedula,
+          ref_vendedor: data.ref_vendedor,
+          url: data.url,
+          storagePath: data.storagePath,
+        });
+      });
+
+      // apply role filtering
+      let filtered = all;
+      if (!isAdmin) {
+        if (isVendedor) {
+          filtered = all.filter(d => d.ref_vendedor === user?.cedula);
+        } else {
+          filtered = all.filter(d => d.cedula === user?.cedula);
+        }
+      }
+
+      setDocumentos(filtered);
+    } catch (error) {
+      console.error('Error loading documentos:', error);
+    }
+  };
 
   const filteredDocumentos = isAdmin
     ? documentos
@@ -212,24 +248,42 @@ export default function DocumentosScreen() {
     setShowUploadModal(true);
   };
 
-  const handleUploadSubmit = () => {
+const handleUploadSubmit = async () => {
     if (!uploadNombre || !uploadCedula || !uploadTipoArchivo || !selectedFile || !uploadRefVendedor) {
       Alert.alert('Error', 'Todos los campos son obligatorios y debes seleccionar un archivo');
       return;
     }
 
-    const newDoc: Documento = {
-      id: Date.now().toString(),
-      nombre: uploadNombre,
-      cedula: uploadCedula,
-      tipo_archivo: uploadTipoArchivo as any,
-      ref_vendedor: uploadRefVendedor,
-      url: selectedFile.uri,
-    };
+    try {
+      // download file blob from uri
+      const response = await fetch(selectedFile.uri);
+      const blob = await response.blob();
+      const ext = selectedFile.name?.split('.').pop() || '';
+      const filename = `documentos/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const sRef = storageRef(storage, filename);
+      await uploadBytes(sRef, blob);
+      const downloadURL = await getDownloadURL(sRef);
 
-    setDocumentos(prev => [...prev, newDoc]);
-    setShowUploadModal(false);
-    Alert.alert('Éxito', 'Documento agregado correctamente (Firebase próximamente)');
+      // save record in Firestore
+      await addDoc(collection(db, 'documentos'), {
+        nombre: uploadNombre,
+        tipo_archivo: uploadTipoArchivo,
+        cedula: uploadCedula,
+        ref_vendedor: isVendedor ? user?.cedula : uploadRefVendedor,
+        url: downloadURL,
+        storagePath: filename,
+        createdAt: serverTimestamp(),
+      });
+
+      // refresh list
+      await loadDocumentos();
+
+      setShowUploadModal(false);
+      Alert.alert('Éxito', 'Documento subido correctamente');
+    } catch (error) {
+      console.error('Error al subir documento:', error);
+      Alert.alert('Error', 'No se pudo subir el documento. Intenta nuevamente.');
+    }
   };
 
   const handleDeleteDocumento = (id: string) => {
@@ -241,8 +295,20 @@ export default function DocumentosScreen() {
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            setDocumentos(prev => prev.filter(d => d.id !== id));
+          onPress: async () => {
+            try {
+              const docToDelete = documentos.find(d => d.id === id);
+              if (docToDelete && (docToDelete as any).storagePath) {
+                const sRef = storageRef(storage, (docToDelete as any).storagePath);
+                await deleteObject(sRef);
+              }
+              await deleteDoc(doc(db, 'documentos', id));
+              await loadDocumentos();
+              Alert.alert('Éxito', 'Documento eliminado correctamente');
+            } catch (error) {
+              console.error('Error deleting documento:', error);
+              Alert.alert('Error', 'No se pudo eliminar el documento');
+            }
           },
         },
       ]
