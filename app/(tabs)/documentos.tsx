@@ -41,6 +41,8 @@ interface Documento {
   storagePath?: string;
   isLocal?: boolean; // Indica si es descargado localmente
   localPath?: string; // Ruta local del archivo
+  nombreCliente?: string; // Nombre del cliente propietario del documento
+  referenciaCliente?: string; // Referencia del cliente
 }
 
 interface Usuario {
@@ -94,8 +96,11 @@ export default function DocumentosScreen() {
 
   // Load usuarios and documentos from Firestore when user changes
   useEffect(() => {
-    loadUsuarios();
-    loadDocumentos();
+    const loadData = async () => {
+      await loadUsuarios();
+      await loadDocumentos();
+    };
+    loadData();
   }, [user]);
 
   const loadUsuarios = async () => {
@@ -176,8 +181,17 @@ export default function DocumentosScreen() {
       // Luego cargar desde Firestore
       const querySnapshot = await getDocs(collection(db, 'documentos'));
       const firebaseDocs: Documento[] = [];
+      
+      // Crear un mapa de usuarios para búsqueda rápida
+      const usuariosMap = new Map();
+      [...vendedores, ...clientes].forEach(u => {
+        usuariosMap.set(u.cedula, u);
+      });
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        const usuarioData = usuariosMap.get(data.cedula);
+        
         firebaseDocs.push({
           id: doc.id,
           nombre: data.nombre,
@@ -187,6 +201,8 @@ export default function DocumentosScreen() {
           url: data.url,
           storagePath: data.storagePath,
           isLocal: false,
+          nombreCliente: usuarioData?.nombre || 'No disponible',
+          referenciaCliente: usuarioData?.tipo === 'cliente' ? (data.referencia || 'N/A') : undefined,
         });
       });
 
@@ -563,7 +579,13 @@ const handleUploadSubmit = async () => {
         <Text style={styles.documentType}>{item.tipo_archivo.toUpperCase()}</Text>
         {item.isLocal && <Text style={styles.offlineIndicator}>📱 Guardado localmente</Text>}
         {(isAdmin || isVendedor) && (
+          <Text style={styles.documentCedula}>Nombre: {item.nombreCliente || 'No disponible'}</Text>
+        )}
+        {(isAdmin || isVendedor) && (
           <Text style={styles.documentCedula}>Cédula: {item.cedula}</Text>
+        )}
+        {(isAdmin || isVendedor) && item.referenciaCliente && (
+          <Text style={styles.documentCedula}>Referencia: {item.referenciaCliente}</Text>
         )}
         {isAdmin && item.ref_vendedor && (
           <Text style={styles.documentCedula}>Ref. Vendedor: {item.ref_vendedor}</Text>

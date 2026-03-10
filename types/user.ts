@@ -16,4 +16,7 @@ export interface FirebaseUser {
   tipo: 'admin' | 'cliente' | 'vendedor';
   username: string;
   password: string;
+  celular: string;
+  correo: string;
+  referencia: string;
 }

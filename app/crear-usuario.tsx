@@ -32,6 +32,9 @@ export default function CrearUsuarioScreen() {
   const [nombre, setNombre] = useState<string>('');
   const [apellido, setApellido] = useState<string>('');
   const [cedula, setCedula] = useState<string>('');
+  const [celular, setCelular] = useState<string>('');
+  const [correo, setCorreo] = useState<string>('');
+  const [referencia, setReferencia] = useState<string>('');
   const [fechaViaje, setFechaViaje] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
   const [searchCedula, setSearchCedula] = useState<string>('');
@@ -96,6 +99,9 @@ export default function CrearUsuarioScreen() {
         setNombre('');
         setApellido('');
         setCedula('');
+        setCelular('');
+        setCorreo('');
+        setReferencia('');
         setFechaViaje(new Date());
       } else {
         const userDoc = querySnapshot.docs[0];
@@ -105,6 +111,9 @@ export default function CrearUsuarioScreen() {
         setNombre(userData.nombre);
         setApellido(userData.apellido);
         setCedula(userData.cedula);
+        setCelular(userData.celular);
+        setCorreo(userData.correo);
+        setReferencia(userData.referencia);
         setFechaViaje(new Date(userData.fecha_viaje));
         Alert.alert('Usuario encontrado', 'Ahora puedes modificar los campos permitidos');
       }
@@ -117,7 +126,7 @@ export default function CrearUsuarioScreen() {
   };
 
   const handleCrearUsuario = async () => {
-    if (!nombre || !apellido || !cedula) {
+    if (!nombre || !apellido || !cedula || !celular || !correo) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
@@ -137,6 +146,9 @@ export default function CrearUsuarioScreen() {
         nombre,
         apellido,
         cedula,
+        celular,
+        correo,
+        referencia,
         fecha_viaje: fechaFormateada,
         tipo: 'cliente',
         username,
@@ -146,7 +158,7 @@ export default function CrearUsuarioScreen() {
       await addDoc(collection(db, 'usuarios'), nuevoUsuario);
       
       try {
-        await scheduleViajeNotifications(fechaFormateada, `${nombre} ${apellido}`);
+        await scheduleViajeNotifications(fechaFormateada, `${nombre} ${apellido} ${referencia}`);
       } catch (notifError) {
         console.error('Error scheduling notifications:', notifError);
       }
@@ -161,6 +173,9 @@ export default function CrearUsuarioScreen() {
               setNombre('');
               setApellido('');
               setCedula('');
+              setCelular('');
+              setCorreo('');
+              setReferencia('');
               setFechaViaje(new Date());
             }
           }
@@ -185,7 +200,7 @@ export default function CrearUsuarioScreen() {
       return;
     }
 
-    if (isAdmin && (!nombre || !apellido || !cedula)) {
+    if (isAdmin && (!nombre || !apellido || !cedula || !celular || !correo)) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
@@ -202,6 +217,9 @@ export default function CrearUsuarioScreen() {
           nombre,
           apellido,
           cedula,
+          celular,
+          correo,
+          referencia,
           fecha_viaje: fechaFormateada,
           username,
           password,
@@ -215,7 +233,7 @@ export default function CrearUsuarioScreen() {
       }
 
       try {
-        await scheduleViajeNotifications(fechaFormateada, `${nombre} ${apellido}`);
+        await scheduleViajeNotifications(fechaFormateada, `${nombre} ${apellido} ${referencia}`);
       } catch (notifError) {
         console.error('Error scheduling notifications:', notifError);
       }
@@ -226,6 +244,9 @@ export default function CrearUsuarioScreen() {
       setNombre('');
       setApellido('');
       setCedula('');
+      setCelular('');
+      setCorreo('');
+      setReferencia('');
       setFechaViaje(new Date());
     } catch (error) {
       console.error('Error actualizando usuario:', error);
@@ -243,7 +264,7 @@ export default function CrearUsuarioScreen() {
     }
   };
 
-  const canEditField = (field: 'nombre' | 'apellido' | 'cedula') => {
+  const canEditField = (field: 'nombre' | 'apellido' | 'cedula' | 'celular' | 'correo' | 'referencia') => {
     if (mode === 'crear') return true;
     if (isAdmin) return true;
     return false;
@@ -264,6 +285,9 @@ export default function CrearUsuarioScreen() {
             setNombre('');
             setApellido('');
             setCedula('');
+            setCelular('');
+            setCorreo('');
+            setReferencia('');
             setFechaViaje(new Date());
             setShowDatePicker(false);
           }}
@@ -279,6 +303,9 @@ export default function CrearUsuarioScreen() {
             setNombre('');
             setApellido('');
             setCedula('');
+            setCelular('');
+            setCorreo('');
+            setReferencia('');
             setFechaViaje(new Date());
             setFoundUser(null);
             setUserDocId(null);
@@ -359,6 +386,41 @@ export default function CrearUsuarioScreen() {
               editable={canEditField('cedula')}
             />
           </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Celular</Text>
+            <TextInput
+              style={[styles.input, !canEditField('celular') && styles.inputDisabled]}
+              placeholder="Ingresa el celular"
+              value={celular}
+              onChangeText={setCelular}
+              keyboardType="numeric"
+              editable={canEditField('celular')}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Correo Electrónico</Text>
+            <TextInput
+              style={[styles.input, !canEditField('correo') && styles.inputDisabled]}
+              placeholder="Ingresa el correo electrónico"
+              value={correo}
+              onChangeText={setCorreo}
+              keyboardType="email-address"
+              editable={canEditField('correo')}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Referencia</Text>
+            <TextInput
+              style={[styles.input, !canEditField('referencia') && styles.inputDisabled]}
+              placeholder="Ingresa la referencia"
+              value={referencia}
+              onChangeText={setReferencia}
+              editable={canEditField('referencia')}
+            />
+          </View>
         </>
       )}
 
@@ -422,7 +484,7 @@ export default function CrearUsuarioScreen() {
 
       {mode === 'crear' && (
         <View style={styles.infoBox}>
-          <Text style={styles.infoText}>El usuario será el apellido y la contraseña será la cédula</Text>
+          <Text style={styles.infoText}>El usuario será el apellido en minúsculas y la contraseña será la cédula</Text>
         </View>
       )}
 
