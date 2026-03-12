@@ -8,6 +8,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { Download, Edit, FileText, Plus, Search, Trash2, Upload, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
+import * as IntentLauncher from 'expo-intent-launcher';
 import {
   ActivityIndicator,
   Alert,
@@ -111,22 +112,36 @@ export default function DocumentosScreen() {
       const querySnapshot = await getDocs(collection(db, 'usuarios'));
       const usuariosData: Usuario[] = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
         usuariosData.push({
-          cedula: doc.data().cedula,
-          nombre: doc.data().nombre,
-          tipo: doc.data().tipo,
-        });
+          cedula: data.cedula,
+          nombre: data.nombre,
+          tipo: data.tipo,
+          createdBy: data.createdBy,
+        } as any);
       });
 
-      // Filter vendedores and clientes
+      // vendedores siempre se cargan completos
       const vendedoresList = usuariosData.filter(u => u.tipo === 'vendedor');
-      const clientesList = usuariosData.filter(u => u.tipo === 'cliente');
+
+      let clientesList: Usuario[];
+
+      if (isAdmin) {
+        // admin ve todos
+        clientesList = usuariosData.filter(u => u.tipo === 'cliente');
+      } else if (isVendedor) {
+        // vendedor solo ve los que creó
+        clientesList = usuariosData.filter(
+          (u: any) => u.tipo === 'cliente' && u.createdBy === user?.cedula
+        );
+      } else {
+        clientesList = [];
+      }
 
       setVendedores(vendedoresList);
       setClientes(clientesList);
     } catch (error) {
       console.error('Error loading usuarios:', error);
-      // Keep empty arrays on error
     }
   };
 
@@ -300,6 +315,54 @@ export default function DocumentosScreen() {
     setShowCedulaModal(true);
   };
 
+  const getMimeType = (path: string) => {
+    const ext = path.split('.').pop()?.toLowerCase();
+
+    switch (ext) {
+      case 'pdf':
+        return 'application/pdf';
+
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'webp':
+        return 'image/*';
+
+      case 'txt':
+        return 'text/plain';
+
+      default:
+        return '*/*';
+    }
+  };
+
+  const openFile = async (path: string) => {
+    try {
+
+      if (Platform.OS === 'ios') {
+        await Linking.openURL(path);
+        return;
+      }
+
+      const contentUri = await FileSystem.getContentUriAsync(path);
+      const mimeType = getMimeType(path);
+
+      await IntentLauncher.startActivityAsync(
+        'android.intent.action.VIEW',
+        {
+          data: contentUri,
+          flags: 1,
+          type: mimeType,
+        }
+      );
+
+    } catch (error) {
+      console.error("Error opening file:", error);
+      Alert.alert("Información", "No se pudo abrir el archivo");
+    }
+  };
+
   const confirmDownload = async () => {
     if (!selectedDoc) return;
 
@@ -329,8 +392,7 @@ export default function DocumentosScreen() {
 
         // Abrir el archivo ya descargado
         try {
-          const fileUri = Platform.OS === 'android' ? 'file://' + filePath : filePath;
-          await Linking.openURL(fileUri);
+          await openFile(filePath);
         } catch (error) {
           console.error('Error abriendo archivo:', error);
           Alert.alert('Información', 'El archivo se encuentra guardado en tu dispositivo');
@@ -347,8 +409,7 @@ export default function DocumentosScreen() {
         setIsDownloading(false);
 
         try {
-          const fileUri = Platform.OS === 'android' ? 'file://' + selectedDoc.localPath : selectedDoc.localPath;
-          await Linking.openURL(fileUri);
+          await openFile(filePath);
         } catch (error) {
           console.error('Error abriendo archivo:', error);
           Alert.alert('Información', 'El archivo se encuentra guardado en tu dispositivo');
@@ -399,8 +460,7 @@ export default function DocumentosScreen() {
             text: 'Abrir',
             onPress: async () => {
               try {
-                const fileUri = Platform.OS === 'android' ? 'file://' + response.uri : response.uri;
-                await Linking.openURL(fileUri);
+                await openFile(filePath);
               } catch (openError) {
                 console.error('Error abriendo documento:', openError);
                 Alert.alert('Información', 'El archivo se encuentra guardado en tu dispositivo');
@@ -422,13 +482,20 @@ export default function DocumentosScreen() {
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: 'application/pdf',
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedFile(result.assets[0]);
-        Alert.alert('Archivo seleccionado', result.assets[0].name);
+        const file = result.assets[0];
+
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+          Alert.alert('Error', 'Solo se permiten archivos PDF');
+          return;
+        }
+
+        setSelectedFile(file);
+        Alert.alert('Archivo seleccionado', file.name);
       }
     } catch (error) {
       console.error('Error picking document:', error);
@@ -457,6 +524,11 @@ const handleUploadSubmit = async () => {
       return;
     }
 
+    if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
+      Alert.alert('Error', 'Solo se permiten archivos PDF');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -477,6 +549,7 @@ const handleUploadSubmit = async () => {
         ref_vendedor: isVendedor ? user?.cedula : uploadRefVendedor,
         url: downloadURL,
         storagePath: filename,
+        mimeType: selectedFile.mimeType,
         createdAt: serverTimestamp(),
       });
 
@@ -551,13 +624,20 @@ const handleUploadSubmit = async () => {
   const handlePickEditDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: 'application/pdf',
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setEditSelectedFile(result.assets[0]);
-        Alert.alert('Archivo seleccionado', result.assets[0].name);
+        const file = result.assets[0];
+
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+          Alert.alert('Error', 'Solo se permiten archivos PDF');
+          return;
+        }
+
+        setEditSelectedFile(file);
+        Alert.alert('Archivo seleccionado', file.name);
       }
     } catch (error) {
       console.error('Error picking document:', error);

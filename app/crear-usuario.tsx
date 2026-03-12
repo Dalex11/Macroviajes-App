@@ -129,7 +129,7 @@ export default function CrearUsuarioScreen() {
   };
 
   const handleCrearUsuario = async () => {
-    if (!nombre || !apellido || !cedula || !pasaporte || !celular || !correo) {
+    if (!nombre || !apellido || !cedula || !celular || !correo) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
@@ -141,6 +141,7 @@ export default function CrearUsuarioScreen() {
 
     const username = apellido.toLowerCase().replace(/\s+/g, '');
     const password = cedula;
+    const createdBy = user?.cedula || '';
     const fechaFormateada = formatDate(fechaViaje);
 
     setLoading(true);
@@ -157,6 +158,7 @@ export default function CrearUsuarioScreen() {
         tipo: 'cliente',
         username,
         password,
+        createdBy,
       };
 
       await addDoc(collection(db, 'usuarios'), nuevoUsuario);
@@ -205,7 +207,7 @@ export default function CrearUsuarioScreen() {
       return;
     }
 
-    if (isAdmin && (!nombre || !apellido || !cedula || !pasaporte || !celular || !correo)) {
+    if (isAdmin && (!nombre || !apellido || !cedula || !celular || !correo)) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
@@ -218,6 +220,7 @@ export default function CrearUsuarioScreen() {
       if (isAdmin) {
         const username = apellido.toLowerCase().replace(/\s+/g, '');
         const password = cedula;
+        const createdBy = user?.cedula || '';
         await updateDoc(userRef, {
           nombre,
           apellido,
@@ -229,6 +232,7 @@ export default function CrearUsuarioScreen() {
           fecha_viaje: fechaFormateada,
           username,
           password,
+          createdBy,
         });
         Alert.alert('Éxito', 'Usuario actualizado correctamente');
       } else {

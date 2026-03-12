@@ -20,4 +20,5 @@ export interface FirebaseUser {
   celular: string;
   correo: string;
   referencia: string;
+  createdBy: string;
 }
