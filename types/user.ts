@@ -12,6 +12,7 @@ export interface FirebaseUser {
   nombre: string;
   apellido: string;
   cedula: string;
+  pasaporte: string;
   fecha_viaje: string;
   tipo: 'admin' | 'cliente' | 'vendedor';
   username: string;

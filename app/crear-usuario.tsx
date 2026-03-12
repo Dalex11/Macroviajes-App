@@ -32,6 +32,7 @@ export default function CrearUsuarioScreen() {
   const [nombre, setNombre] = useState<string>('');
   const [apellido, setApellido] = useState<string>('');
   const [cedula, setCedula] = useState<string>('');
+  const [pasaporte, setPasaporte] = useState<string>('');
   const [celular, setCelular] = useState<string>('');
   const [correo, setCorreo] = useState<string>('');
   const [referencia, setReferencia] = useState<string>('');
@@ -99,6 +100,7 @@ export default function CrearUsuarioScreen() {
         setNombre('');
         setApellido('');
         setCedula('');
+        setPasaporte('');
         setCelular('');
         setCorreo('');
         setReferencia('');
@@ -111,6 +113,7 @@ export default function CrearUsuarioScreen() {
         setNombre(userData.nombre);
         setApellido(userData.apellido);
         setCedula(userData.cedula);
+        setPasaporte(userData.pasaporte);
         setCelular(userData.celular);
         setCorreo(userData.correo);
         setReferencia(userData.referencia);
@@ -126,7 +129,7 @@ export default function CrearUsuarioScreen() {
   };
 
   const handleCrearUsuario = async () => {
-    if (!nombre || !apellido || !cedula || !celular || !correo) {
+    if (!nombre || !apellido || !cedula || !pasaporte || !celular || !correo) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
@@ -146,6 +149,7 @@ export default function CrearUsuarioScreen() {
         nombre,
         apellido,
         cedula,
+        pasaporte,
         celular,
         correo,
         referencia,
@@ -173,6 +177,7 @@ export default function CrearUsuarioScreen() {
               setNombre('');
               setApellido('');
               setCedula('');
+              setPasaporte('');
               setCelular('');
               setCorreo('');
               setReferencia('');
@@ -200,7 +205,7 @@ export default function CrearUsuarioScreen() {
       return;
     }
 
-    if (isAdmin && (!nombre || !apellido || !cedula || !celular || !correo)) {
+    if (isAdmin && (!nombre || !apellido || !cedula || !pasaporte || !celular || !correo)) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
       return;
     }
@@ -217,6 +222,7 @@ export default function CrearUsuarioScreen() {
           nombre,
           apellido,
           cedula,
+          pasaporte,
           celular,
           correo,
           referencia,
@@ -244,6 +250,7 @@ export default function CrearUsuarioScreen() {
       setNombre('');
       setApellido('');
       setCedula('');
+      setPasaporte('');
       setCelular('');
       setCorreo('');
       setReferencia('');
@@ -264,7 +271,7 @@ export default function CrearUsuarioScreen() {
     }
   };
 
-  const canEditField = (field: 'nombre' | 'apellido' | 'cedula' | 'celular' | 'correo' | 'referencia') => {
+  const canEditField = (field: 'nombre' | 'apellido' | 'cedula' | 'pasaporte' | 'celular' | 'correo' | 'referencia') => {
     if (mode === 'crear') return true;
     if (isAdmin) return true;
     return false;
@@ -285,6 +292,7 @@ export default function CrearUsuarioScreen() {
             setNombre('');
             setApellido('');
             setCedula('');
+            setPasaporte('');
             setCelular('');
             setCorreo('');
             setReferencia('');
@@ -303,6 +311,7 @@ export default function CrearUsuarioScreen() {
             setNombre('');
             setApellido('');
             setCedula('');
+            setPasaporte('');
             setCelular('');
             setCorreo('');
             setReferencia('');
@@ -384,6 +393,17 @@ export default function CrearUsuarioScreen() {
               onChangeText={setCedula}
               keyboardType="numeric"
               editable={canEditField('cedula')}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Pasaporte</Text>
+            <TextInput
+              style={[styles.input, !canEditField('pasaporte') && styles.inputDisabled]}
+              placeholder="Ingresa el pasaporte"
+              value={pasaporte}
+              onChangeText={setPasaporte}
+              editable={canEditField('pasaporte')}
             />
           </View>
 
