@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   modeButtonActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.secondary,
   },
   modeButtonText: {
     fontSize: 14,
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   searchButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.secondary,
     borderRadius: 8,
     paddingHorizontal: SPACING.lg,
     justifyContent: 'center',

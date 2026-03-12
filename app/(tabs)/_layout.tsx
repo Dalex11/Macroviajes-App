@@ -1,11 +1,11 @@
-import { Tabs, useRouter } from "expo-router";
-import { TouchableOpacity, View, StyleSheet, Alert, Text, Image, Dimensions, Linking } from "react-native";
-import { ImageIcon, FileText, Gamepad2, LogOut, UserPlus } from "lucide-react-native";
-import React from "react";
-import { useAuth } from '@/contexts/AuthContext';
-import { COLORS } from '@/constants/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import { COLORS } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { Tabs, useRouter } from "expo-router";
+import { FileText, Gamepad2, ImageIcon, LogOut, UserPlus } from "lucide-react-native";
+import React from "react";
+import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -78,12 +78,12 @@ export default function TabLayout() {
       alignItems: 'center',
     },
     logo: {
-      width: getResponsiveSize(32),
-      height: getResponsiveSize(32),
+      width: getResponsiveSize(40),
+      height: getResponsiveSize(40),
       marginRight: 8,
     },
     appName: {
-      fontSize: getResponsiveSize(18),
+      fontSize: getResponsiveSize(20),
       fontWeight: '700' as const,
       color: COLORS.white,
       letterSpacing: 0.5,
@@ -93,7 +93,7 @@ export default function TabLayout() {
       borderRadius: 8,
     },
     iconContainerActive: {
-      backgroundColor: 'rgba(236, 111, 53, 0.1)',
+      backgroundColor: 'rgba(244, 124, 44, 1)',
     },
   });
 
@@ -103,15 +103,15 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: true,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: COLORS.primary,
           borderTopColor: '#E8E8E8',
           paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 10,
           height: 60 + Math.max(insets.bottom, 10),
           elevation: 8,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
+          shadowOffset: { width: 0, height: -6 },
+          shadowOpacity: 0.2,
           shadowRadius: 4,
           position: 'absolute' as const,
           bottom: 0,
@@ -119,8 +119,8 @@ export default function TabLayout() {
           right: 0,
         },
         tabBarShowLabel: true,
-        tabBarActiveTintColor: COLORS.secondary,
-        tabBarInactiveTintColor: '#888888',
+        tabBarActiveTintColor: COLORS.white,
+        tabBarInactiveTintColor: COLORS.primary,
         tabBarLabelStyle: {
           fontSize: getResponsiveSize(11),
           fontWeight: '600' as const,
@@ -131,9 +131,10 @@ export default function TabLayout() {
         },
         headerStyle: {
           backgroundColor: COLORS.primary,
+          height: 120,
           elevation: 4,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
+          shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.2,
           shadowRadius: 3,
         },
@@ -141,18 +142,6 @@ export default function TabLayout() {
         headerTitle: '',
         headerRight: () => (
           <View style={styles.headerRightContainer}>
-            <TouchableOpacity onPress={handleLogoPress} style={styles.logoContainer} activeOpacity={0.7}>
-              <Image 
-                source={require('@/assets/images/icon.png')} 
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <Text style={styles.appName}>MACROVIAJES</Text>
-            </TouchableOpacity>
-          </View>
-        ),
-        headerLeft: () => (
-          <View style={styles.headerLeftContainer}>
             {(isAdmin || isVendedor) && (
               <TouchableOpacity onPress={() => router.push('/crear-usuario')} style={styles.headerButton}>
                 <UserPlus size={getResponsiveSize(22)} color={COLORS.white} />
@@ -160,6 +149,18 @@ export default function TabLayout() {
             )}
             <TouchableOpacity onPress={handleLogout} style={styles.headerButton}>
               <LogOut size={getResponsiveSize(22)} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+        ),
+        headerLeft: () => (
+          <View style={styles.headerLeftContainer}>
+            <TouchableOpacity onPress={handleLogoPress} style={styles.logoContainer} activeOpacity={0.7}>
+              <Image 
+                source={require('@/assets/images/icon.png')} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.appName}>MACROVIAJES</Text>
             </TouchableOpacity>
           </View>
         ),
@@ -171,7 +172,7 @@ export default function TabLayout() {
           tabBarLabel: "Promociones",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <ImageIcon size={getResponsiveSize(24)} color={focused ? COLORS.secondary : '#888888'} strokeWidth={2} />
+              <ImageIcon size={getResponsiveSize(24)} color={focused ? COLORS.white : '#888888'} strokeWidth={2} />
             </View>
           ),
         }}
@@ -182,7 +183,7 @@ export default function TabLayout() {
           tabBarLabel: "Documentos",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <FileText size={getResponsiveSize(24)} color={focused ? COLORS.secondary : '#888888'} strokeWidth={2} />
+              <FileText size={getResponsiveSize(24)} color={focused ? COLORS.white : '#888888'} strokeWidth={2} />
             </View>
           ),
         }}
@@ -193,7 +194,7 @@ export default function TabLayout() {
           tabBarLabel: "Juegos",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-              <Gamepad2 size={getResponsiveSize(24)} color={focused ? COLORS.secondary : '#888888'} strokeWidth={2} />
+              <Gamepad2 size={getResponsiveSize(24)} color={focused ? COLORS.white : '#888888'} strokeWidth={2} />
             </View>
           ),
         }}

@@ -6,7 +6,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
-import { Download, Edit, FileText, Plus, Trash2, Upload, X } from 'lucide-react-native';
+import { Download, Edit, FileText, Plus, Search, Trash2, Upload, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -43,6 +43,7 @@ interface Documento {
   localPath?: string; // Ruta local del archivo
   nombreCliente?: string; // Nombre del cliente propietario del documento
   referenciaCliente?: string; // Referencia del cliente
+  nombreVendedor?: string; // Nombre del vendedor asociado (solo para admin)
 }
 
 interface Usuario {
@@ -84,6 +85,7 @@ export default function DocumentosScreen() {
   const [vendedores, setVendedores] = useState<Usuario[]>([]);
   const [clientes, setClientes] = useState<Usuario[]>([]);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>('');
 
   // Editar documento
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
@@ -93,6 +95,7 @@ export default function DocumentosScreen() {
   const [editSelectedFile, setEditSelectedFile] = useState<any>(null);
   const [showEditTipoDropdown, setShowEditTipoDropdown] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Load usuarios and documentos from Firestore when user changes
   useEffect(() => {
@@ -191,6 +194,7 @@ export default function DocumentosScreen() {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const usuarioData = usuariosMap.get(data.cedula);
+        const vendedorData = usuariosMap.get(data.ref_vendedor);
         
         firebaseDocs.push({
           id: doc.id,
@@ -203,6 +207,7 @@ export default function DocumentosScreen() {
           isLocal: false,
           nombreCliente: usuarioData?.nombre || 'No disponible',
           referenciaCliente: usuarioData?.tipo === 'cliente' ? (data.referencia || 'N/A') : undefined,
+          nombreVendedor: vendedorData?.nombre || 'No disponible',
         });
       });
 
@@ -243,10 +248,35 @@ export default function DocumentosScreen() {
   };
 
   const filteredDocumentos = isAdmin
-    ? documentos
+    ? documentos.filter(doc => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          doc.nombre.toLowerCase().includes(searchLower) ||
+          (doc.nombreCliente?.toLowerCase().includes(searchLower) ?? false) ||
+          doc.cedula.toLowerCase().includes(searchLower) ||
+          (doc.nombreVendedor?.toLowerCase().includes(searchLower) ?? false)
+        );
+      })
     : isVendedor
-    ? documentos.filter(doc => doc.ref_vendedor === user?.cedula)
-    : documentos.filter(doc => doc.cedula === user?.cedula);
+    ? documentos.filter(doc => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          doc.ref_vendedor === user?.cedula &&
+          (doc.nombre.toLowerCase().includes(searchLower) ||
+            (doc.nombreCliente?.toLowerCase().includes(searchLower) ?? false) ||
+            doc.cedula.toLowerCase().includes(searchLower) ||
+            (doc.nombreVendedor?.toLowerCase().includes(searchLower) ?? false))
+        );
+      })
+    : documentos.filter(doc => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          doc.cedula === user?.cedula &&
+          (doc.nombre.toLowerCase().includes(searchLower) ||
+            (doc.nombreCliente?.toLowerCase().includes(searchLower) ?? false) ||
+            doc.cedula.toLowerCase().includes(searchLower))
+        );
+      });
 
   const handleDownload = (doc: Documento) => {
     setSelectedDoc(doc);
@@ -389,7 +419,7 @@ export default function DocumentosScreen() {
     }
   };
 
-  const handleAddDocumento = () => {
+  const handleAddDocumento = async () => {
     setUploadNombre('');
     setUploadCedula('');
     setUploadTipoArchivo('pasaporte');
@@ -399,6 +429,8 @@ export default function DocumentosScreen() {
       setUploadRefVendedor('');
     }
     setSelectedFile(null);
+    // Cargar usuarios antes de mostrar el modal
+    await loadUsuarios();
     setShowUploadModal(true);
   };
 
@@ -407,6 +439,8 @@ const handleUploadSubmit = async () => {
       Alert.alert('Error', 'Todos los campos son obligatorios y debes seleccionar un archivo');
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       // download file blob from uri
@@ -437,6 +471,8 @@ const handleUploadSubmit = async () => {
     } catch (error) {
       console.error('Error al subir documento:', error);
       Alert.alert('Error', 'No se pudo subir el documento. Intenta nuevamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -451,6 +487,7 @@ const handleUploadSubmit = async () => {
           style: 'destructive',
           onPress: async () => {
             try {
+              setIsSubmitting(true);
               const docToDelete = documentos.find(d => d.id === id);
               if (docToDelete && (docToDelete as any).storagePath) {
                 const sRef = storageRef(storage, (docToDelete as any).storagePath);
@@ -473,9 +510,11 @@ const handleUploadSubmit = async () => {
 
               await deleteDoc(doc(db, 'documentos', id));
               await loadDocumentos();
+              setIsSubmitting(false);
               Alert.alert('Éxito', 'Documento eliminado correctamente');
             } catch (error) {
               console.error('Error deleting documento:', error);
+              setIsSubmitting(false);
               Alert.alert('Error', 'No se pudo eliminar el documento');
             }
           },
@@ -584,11 +623,11 @@ const handleUploadSubmit = async () => {
         {(isAdmin || isVendedor) && (
           <Text style={styles.documentCedula}>Cédula: {item.cedula}</Text>
         )}
-        {(isAdmin || isVendedor) && item.referenciaCliente && (
+        {(isAdmin || isVendedor) && (
           <Text style={styles.documentCedula}>Referencia: {item.referenciaCliente}</Text>
         )}
         {isAdmin && item.ref_vendedor && (
-          <Text style={styles.documentCedula}>Ref. Vendedor: {item.ref_vendedor}</Text>
+          <Text style={styles.documentCedula}>Vendedor: {item.nombreVendedor}</Text>
         )}
       </View>
 
@@ -623,10 +662,30 @@ const handleUploadSubmit = async () => {
 
   return (
     <View style={styles.container} pointerEvents="box-none">
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputWrapper}>
+          <Search size={getResponsiveSize(20)} color={COLORS.textLight} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar..."
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholderTextColor={COLORS.textLight}
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchText('')}>
+              <X size={getResponsiveSize(20)} color={COLORS.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {filteredDocumentos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <FileText size={getResponsiveSize(64)} color={COLORS.textLight} />
-          <Text style={styles.emptyText}>No hay documentos disponibles</Text>
+          <Text style={styles.emptyText}>
+            {searchText ? 'No hay documentos que coincidan con la búsqueda' : 'No hay documentos disponibles'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -809,8 +868,16 @@ const handleUploadSubmit = async () => {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.modalButton} onPress={handleUploadSubmit}>
-                <Text style={styles.modalButtonText}>SUBIR DOCUMENTO</Text>
+              <TouchableOpacity 
+                style={[styles.modalButton, isSubmitting && styles.modalButtonDisabled]} 
+                onPress={handleUploadSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <Text style={styles.modalButtonText}>SUBIR DOCUMENTO</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -907,6 +974,15 @@ const handleUploadSubmit = async () => {
           </View>
         </View>
       </Modal>
+
+      {isSubmitting && (
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando...</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -915,6 +991,58 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  searchContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    paddingHorizontal: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: SPACING.sm,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    fontSize: getResponsiveSize(14),
+    color: COLORS.text,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99999,
+  },
+  loadingContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600' as const,
+    color: COLORS.text,
   },
   listContainer: {
     padding: SPACING.md,
@@ -1028,6 +1156,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1002,
   },
   modalContent: {
     backgroundColor: COLORS.white,
@@ -1110,7 +1239,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   filePickerButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#F47C2C',
     borderRadius: 8,
     padding: SPACING.md,
     flexDirection: 'row',
@@ -1125,7 +1254,7 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   modalButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#F47C2C',
     borderRadius: 8,
     padding: SPACING.md,
     alignItems: 'center',

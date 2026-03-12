@@ -362,7 +362,7 @@ export default function PromocionesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.black,
+    backgroundColor: COLORS.white,
   },
   promocionContainer: {
     flex: 1,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconCircle: {
-    backgroundColor: 'rgba(19, 145, 203, 0.9)',
+    backgroundColor: 'rgba(244, 124, 44, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: COLORS.black,
