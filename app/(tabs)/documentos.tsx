@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc, query, where } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { Download, Edit, FileText, Plus, Search, Trash2, Upload, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -180,21 +180,47 @@ export default function DocumentosScreen() {
     try {
       // Cargar primero documentos locales (offline)
       const localDocs = await loadLocalDocumentos();
+
+      let q;
+
+      if (isAdmin) {
+        q = query(collection(db, 'documentos'));
+      } 
+      else if (isVendedor) {
+        q = query(
+          collection(db, 'documentos'),
+          where('ref_vendedor', '==', user?.cedula)
+        );
+      } 
+      else {
+        q = query(
+          collection(db, 'documentos'),
+          where('cedula', '==', user?.cedula)
+        );
+      }
       
       // Luego cargar desde Firestore
-      const querySnapshot = await getDocs(collection(db, 'documentos'));
+      const querySnapshot = await getDocs(q);
       const firebaseDocs: Documento[] = [];
       
-      // Crear un mapa de usuarios para búsqueda rápida
+      // Traer usuarios directamente
+      const usuariosSnapshot = await getDocs(collection(db, 'usuarios'));
+
       const usuariosMap = new Map();
-      [...vendedores, ...clientes].forEach(u => {
-        usuariosMap.set(u.cedula, u);
+
+      usuariosSnapshot.forEach((doc) => {
+        const data = doc.data();
+        usuariosMap.set(data.cedula, {
+          nombre: data.nombre,
+          referencia: data.referencia,
+          tipo: data.tipo,
+        });
       });
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        const usuarioData = usuariosMap.get(data.cedula);
-        const vendedorData = usuariosMap.get(data.ref_vendedor);
+        const cliente = usuariosMap.get(data.cedula);
+        const vendedor = usuariosMap.get(data.ref_vendedor);
         
         firebaseDocs.push({
           id: doc.id,
@@ -205,9 +231,9 @@ export default function DocumentosScreen() {
           url: data.url,
           storagePath: data.storagePath,
           isLocal: false,
-          nombreCliente: usuarioData?.nombre || 'No disponible',
-          referenciaCliente: usuarioData?.tipo === 'cliente' ? (data.referencia || 'N/A') : undefined,
-          nombreVendedor: vendedorData?.nombre || 'No disponible',
+          nombreCliente: cliente?.nombre || 'No disponible',
+          referenciaCliente: cliente?.referencia || 'N/A',
+          nombreVendedor: vendedor?.nombre || 'No disponible',
         });
       });
 
@@ -229,16 +255,7 @@ export default function DocumentosScreen() {
       });
 
       // apply role filtering
-      let filtered = all;
-      if (!isAdmin) {
-        if (isVendedor) {
-          filtered = all.filter(d => d.ref_vendedor === user?.cedula);
-        } else {
-          filtered = all.filter(d => d.cedula === user?.cedula);
-        }
-      }
-
-      setDocumentos(filtered);
+      setDocumentos(all);
     } catch (error) {
       console.error('Error loading documentos:', error);
       // Intentar cargar al menos los locales
