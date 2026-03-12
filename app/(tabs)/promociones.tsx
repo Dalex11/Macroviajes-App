@@ -11,6 +11,7 @@ import {
   Share,
   ActivityIndicator,
   TouchableWithoutFeedback,
+  FlatList,
 } from 'react-native';
 import { Share2, Download, Plus, Trash2 } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
@@ -25,6 +26,7 @@ import * as MediaLibrary from 'expo-media-library';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const getResponsiveSize = (baseSize: number) => {
   const scale = SCREEN_WIDTH / 375;
@@ -45,6 +47,8 @@ interface Promocion {
 export default function PromocionesScreen() {
   const { isAdmin } = useAuth();
   const insets = useSafeAreaInsets();
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [promociones, setPromociones] = useState<Promocion[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [downloading, setDownloading] = useState<boolean>(false);
@@ -53,6 +57,16 @@ export default function PromocionesScreen() {
   useEffect(() => {
     loadPromociones();
   }, []);
+
+  const openFullscreen = (url: string) => {
+    setFullscreenImage(url);
+    setFullscreen(true);
+  };
+
+  const closeFullscreen = () => {
+    setFullscreen(false);
+    setFullscreenImage(null);
+  };
 
   const loadPromociones = async () => {
     try {
@@ -299,11 +313,50 @@ export default function PromocionesScreen() {
           <Text style={styles.emptyText}>No hay promociones disponibles</Text>
         </View>
       ) : (
-        <TouchableWithoutFeedback onPress={handleScreenPress}>
-          <View style={styles.promocionContainer} pointerEvents="auto">
-            <Image source={{ uri: currentPromocion.url }} style={styles.image} resizeMode="contain" />
-          </View>
-        </TouchableWithoutFeedback>
+        <>
+          <FlatList
+            data={promociones}
+            keyExtractor={(item) => item.id}
+            pagingEnabled
+            snapToAlignment="start"
+            decelerationRate="fast"
+            snapToInterval={SCREEN_HEIGHT}
+            showsVerticalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(
+                event.nativeEvent.contentOffset.y / SCREEN_HEIGHT
+              );
+              setCurrentIndex(index);
+            }}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => openFullscreen(item.url)}
+                style={styles.reelContainer}
+              >
+                <View style={styles.card}>
+                  <Image
+                    source={{ uri: item.url }}
+                    style={styles.cardImage}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+
+          {/* MODAL FULLSCREEN */}
+          {fullscreen && fullscreenImage && (
+            <TouchableWithoutFeedback onPress={closeFullscreen}>
+              <View style={styles.fullscreenOverlay}>
+                <Image
+                  source={{ uri: fullscreenImage }}
+                  style={styles.fullscreenImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          )}
+        </>
       )}
 
       <View style={[styles.actionsOverlay, { bottom: 100 + insets.bottom }]} pointerEvents="box-none">
@@ -405,6 +458,44 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: COLORS.white,
+  },
+  reelImage: {
+    width: '100%',
+    height: '100%',
+  },
+  reelContainer: {
+    height: SCREEN_HEIGHT,
+    width: SCREEN_WIDTH,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  card: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullscreenOverlay: {
+    //position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 94,
+    zIndex: 900,
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '100%',
   },
 
 });
