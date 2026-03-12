@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 export default {
   "expo": {
+    "owner": "deiby404",
     "name": "macroviajes-app",
     "slug": "macroviajes-app",
     "version": "1.0.0",
@@ -16,7 +17,8 @@ export default {
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.macroviajes.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -68,7 +70,10 @@ export default {
       "firebaseProjectId": process.env.FIREBASE_PROJECT_ID,
       "firebaseStorageBucket": process.env.FIREBASE_STORAGE_BUCKET,
       "firebaseMessagingSenderId": process.env.FIREBASE_MESSAGING_SENDER_ID,
-      "firebaseAppId": process.env.FIREBASE_APP_ID
+      "firebaseAppId": process.env.FIREBASE_APP_ID,
+      "eas": {
+        "projectId": "9ec79031-09b7-4da3-9b23-4e5df9277a5e"
+      }
     }
   }
 };
